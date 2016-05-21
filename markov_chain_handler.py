@@ -9,9 +9,10 @@ def gen_markov_chain(corpus, ngram_len=2, chain={}, weight=1):
     #chain = {}
     for statement in corpus:
         words = [start_word] #words with spaces are controls
-        words.append(statement.split(' ')) #get words by splitting on spaces
-        words.append(stop_word)
-        current_ngram = [word for words in xrange(ngram_len)]
+        words += statement.split(' ') #get words by splitting on spaces
+        words += [stop_word]
+        current_ngram = [words[x] for x in xrange(ngram_len)]
+        print(current_ngram)
         for x in xrange(ngram_len+1, len(words)):
             next_word = words[x]
             next_dict = chain[tuple(current_ngram)]
@@ -19,7 +20,7 @@ def gen_markov_chain(corpus, ngram_len=2, chain={}, weight=1):
                 next_dict = {}
                 chain[tuple(current_ngram)] = next_dict
 
-            if next_word is in next_dict:
+            if next_word in next_dict:
                 next_dict[next_word] = next_dict[next_word] + weight
             else:
                 next_dict[next_word] = weight
@@ -74,3 +75,19 @@ def update_markov_chain(corpus, markov_chain, ngram_len=2, weight=1):
         for word in next_dict:
             next_dict[word] = (1-weight) * next_dict[word]
     return gen_markov_chain(corpus, ngram_len=ngram_len, chain=markov_chain, weight=weight)
+
+
+def main():
+    test_corpus = ['oent aoesntuh oaesnut aosneuh aosenuthse eaoe',
+                   'ao oeu eu aoe oui aoseih',
+                   'aosne oeuae aoe oe ai eu',
+                   'aoe ea ie ao eia oea',
+                   'aoe ea ao ie ao ei',
+                   'aoeu ao ao ea ei',
+                   'uoe aoeuu euaaoeu eua',
+                   'ueeao aoe aoeuao aoeuaoe',
+                   'aoeu aoue aoeu']
+    print(gen_markov_chain(test_corpus))
+
+if __name__ == '__main__':
+    main()
