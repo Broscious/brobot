@@ -9,9 +9,10 @@ class irc_bot:
         self.irc.connect((twitch_server, 6667))
         self.irc.send('PASS ' + oauth + '\r\n')
         self.irc.send('NICK ' + nick + '\r\n')
+        self.channels = []
 
     def join_channel(self, channel):
-        self.channel = channel
+        self.channels.append(channel)
         self.irc.send('JOIN #' + channel + '\r\n')
 
     def send(self, message):
