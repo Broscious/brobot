@@ -3,7 +3,7 @@ import sys
 
 twitch_server = 'irc.chat.twitch.tv'
 
-class irc_bot:
+class irc_bot(object):
     def __init__(self, nick, oauth):
         self.irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.irc.connect((twitch_server, 6667))
