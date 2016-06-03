@@ -5,14 +5,15 @@ import pandas as pd
 import irc_bot
 import markov_chain_handler as mchain
 
+storing_corpus = True
 joke_file = 'jokes.csv'
-corpus_cap = 500
-channels = ['iwilldominate', 'itmejp', 'maximilian_dood', 'fairlight_excalibur', 'riotgamesoceania', 'p4wnyhof']
+corpus_cap = 200
+corpus_file = 'corpus.txt'
+channels = ['iwilldominate', 'itmejp', 'maximilian_dood', 'fairlight_excalibur', 'riotgamesoceania', 'p4wnyhof', 'broscious']
 
 def join_twitch_channel(bot, channel):
     bot.join_channel(channel)
-    bot.read()
-    bot.read()
+    return bot.read(), bot.read()
 
 def setup_bot():
     bot_name = 'broscbot'
@@ -29,12 +30,19 @@ def setup_bot():
 def setup_jokes():
     return pd.read_csv(joke_file)
 
+def store_entries(corpus):
+    if(len(corpus) >= corpus_cap):
+        with open(corpus_file, 'a') as f:
+            f.write('\n'.join(corpus))
+
 def main():
     bot = setup_bot()
     jokes = setup_jokes()
+    chain = {}
     corpus = []
-    corpusnum = 0
     while True:
+        if time.localtime().tm_hour == 0:
+            jokes = setup_jokes()
         msg = bot.read()
         print(msg)
         user, channel, text = msg
@@ -44,21 +52,19 @@ def main():
         if(text[0] == '!'):
             if text == '!joke\r\n':
                 sample = jokes.sample().iloc[0]
-                bot.send(sample['Joke'])
-                bot.sendall(sample['Punchline'])
+                bot.send(sample['Joke'], channel)
+                bot.sendall(sample['Punchline'], channel)
+            if text == '!spam\r\n':
+                if len(chain) > 0:
+                    spam = mchain.random_walk_statement(chain)
+                    bot.send(spam, channel)
         else:
             corpus.append(text[:len(text)-2])
-            if(len(corpus) % 100 == 0):
-                print(len(corpus))
-            if(len(corpus) >= corpus_cap):
-                statement = mchain.simple_statement(corpus)
-                print(statement)
-                with open('corpus' + str(corpusnum) + '.txt', 'w') as f:
-                    f.write(statement + '\n\n')
-                    f.write('\n'.join(corpus))
+            if len(corpus) >= corpus_cap:
+                chain = mchain.update_markov_chain(corpus, chain, weight=.65)
+                if(storing_corpus):
+                    store_entries(corpus)
                 corpus = []
-                corpusnum += 1
-        #print(msg)
 
 if __name__ == '__main__':
     main()

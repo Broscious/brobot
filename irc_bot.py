@@ -15,16 +15,26 @@ class irc_bot:
         self.channels.append(channel)
         self.irc.send('JOIN #' + channel + '\r\n')
 
-    def send(self, message):
-        self.irc.send('PRIVMSG #' + self.channel + ' :' + message + '\r\n')
+    def send(self, message, channel):
+        if channel in self.channels:
+            self.irc.send('PRIVMSG #' + channel + ' :' + message + '\r\n')
+        else:
+            raise Exception('bot has not joined this channel')
 
-    def sendall(self, message):
-        self.irc.sendall('PRIVMSG #' + self.channel + ' :' + message + '\r\n')
+    def sendall(self, message, channel):
+        if channel in self.channels:
+            self.irc.sendall('PRIVMSG #' + channel + ' :' + message + '\r\n')
+        else:
+            raise Exception('bot has not joined this channel')
+
 
     def recv(self, size=2048, auto_pong=True):
         text = self.irc.recv(size)
         if(auto_pong):
             is_pinged = self.ping_pong(text)
+        else:
+            return text
+
         if(is_pinged):
             return self.recv()
         else:
