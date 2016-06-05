@@ -1,6 +1,8 @@
 import time
+import urllib2
 
 import pandas as pd
+import lxml.html as html
 
 import irc_bot
 import markov_chain_handler as mchain
@@ -10,6 +12,21 @@ joke_file = 'jokes.csv'
 corpus_cap = 200
 corpus_file = 'corpus.txt'
 channels = ['iwilldominate', 'itmejp', 'maximilian_dood', 'fairlight_excalibur', 'riotgamesoceania', 'p4wnyhof', 'broscious']
+viewer_threshold = 1000
+
+def get_top_channels():
+    root = html.parse(urllib2.urlopen('https://www.twitch.tv/directory/all'))
+    links = root.xpath('//a[@class="js-profile-link"]/href')
+    infos = root.xpath('//p[@class="info"]/text()')
+    channels = [link.split('/')[0] for link in links]
+    viewers = [text.split('"')[0] for text in infos]
+
+    #filtered_channels = [channel in channel, viewer_num for zip(channels, viewers) if viewer_num > viewer_threshold]
+    filtered_channels = []
+    for channel, viewer_num in zip(channels, viewers):
+        if viewer_num < viewer_threshold:
+            break
+        filtered_channels.append(channel)
 
 def join_twitch_channel(bot, channel):
     bot.join_channel(channel)
@@ -42,7 +59,7 @@ def main():
     corpus = []
     while True:
         if time.localtime().tm_hour == 0:
-            jokes = setup_jokes()
+            jokes = setu
         msg = bot.read()
         print(msg)
         user, channel, text = msg

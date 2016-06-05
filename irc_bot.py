@@ -9,11 +9,15 @@ class irc_bot(object):
         self.irc.connect((twitch_server, 6667))
         self.irc.send('PASS ' + oauth + '\r\n')
         self.irc.send('NICK ' + nick + '\r\n')
-        self.channels = []
+        self.channels = set([])
 
     def join_channel(self, channel):
-        self.channels.append(channel)
+        self.channels.add(channel)
         self.irc.send('JOIN #' + channel + '\r\n')
+
+    def join_channel(self, channel):
+        self.channels.remove(channel)
+        self.irc.send('PART #' + channel + '\r\n')
 
     def send(self, message, channel):
         if channel in self.channels:
@@ -26,7 +30,6 @@ class irc_bot(object):
             self.irc.sendall('PRIVMSG #' + channel + ' :' + message + '\r\n')
         else:
             raise Exception('bot has not joined this channel')
-
 
     def recv(self, size=2048, auto_pong=True):
         text = self.irc.recv(size)
