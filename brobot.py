@@ -10,23 +10,35 @@ import markov_chain_handler as mchain
 storing_corpus = True
 joke_file = 'jokes.csv'
 corpus_cap = 200
-corpus_file = 'corpus.txt'
-channels = ['iwilldominate', 'itmejp', 'maximilian_dood', 'fairlight_excalibur', 'riotgamesoceania', 'p4wnyhof', 'broscious']
+corpus_file = 'corpuses/corpus.txt'
+channels = ['iwilldominate', 'itmejp', 'maximilian_dood', 'fairlight_excalibur', 'riotgamesoceania', 'p4wnyhof', 'broscious', 'c9sneaky']
 viewer_threshold = 1000
 
+#doesn't work because of ember infinite scroll need to use something to run the javascript :(
 def get_top_channels():
-    root = html.parse(urllib2.urlopen('https://www.twitch.tv/directory/all'))
-    links = root.xpath('//a[@class="js-profile-link"]/href')
+    root = html.parse(urllib2.urlopen('https://www.twitch.tv/directory/all')).getroot()
+    links = root.xpath('//a[@class="js-profile-link"]/@href')
+    print(links)
     infos = root.xpath('//p[@class="info"]/text()')
+    print(infos)
     channels = [link.split('/')[0] for link in links]
     viewers = [text.split('"')[0] for text in infos]
 
     #filtered_channels = [channel in channel, viewer_num for zip(channels, viewers) if viewer_num > viewer_threshold]
-    filtered_channels = []
+    filtered_channels = set()
     for channel, viewer_num in zip(channels, viewers):
         if viewer_num < viewer_threshold:
             break
-        filtered_channels.append(channel)
+        filtered_channels.add(channel)
+    return filtered_channels
+
+def refresh_channels(bot):
+    top_channels = get_top_channels()
+    for channel in bot.channels - top_channels:
+        bot.part_channel(channel)
+
+    for channel in top_channels - bot.channels:
+        bot.join_channel(channel)
 
 def join_twitch_channel(bot, channel):
     bot.join_channel(channel)
@@ -40,6 +52,7 @@ def setup_bot():
 
     bot = irc_bot.irc_bot(bot_name, oauth)
     bot.read() #skip the first line
+    #channels = get_top_channels()
     for channel in channels:
         join_twitch_channel(bot, channel)
     return bot
@@ -57,9 +70,13 @@ def main():
     jokes = setup_jokes()
     chain = {}
     corpus = []
+    last_time = time.time()
     while True:
         if time.localtime().tm_hour == 0:
-            jokes = setu
+            jokes = setup_jokes()
+        #if time.time() - last_time > 3600:
+        #    last_time = time.time()
+        #    refresh_channels(bot)
         msg = bot.read()
         print(msg)
         user, channel, text = msg

@@ -15,7 +15,7 @@ class irc_bot(object):
         self.channels.add(channel)
         self.irc.send('JOIN #' + channel + '\r\n')
 
-    def join_channel(self, channel):
+    def part_channel(self, channel):
         self.channels.remove(channel)
         self.irc.send('PART #' + channel + '\r\n')
 
