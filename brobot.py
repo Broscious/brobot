@@ -10,7 +10,7 @@ import markov_chain_handler as mchain
 storing_corpus = True
 joke_file = 'jokes.csv'
 corpus_cap = 200
-corpus_file = 'corpuses/corpus.txt'
+corpus_path = 'corpuses/'
 channels = ['iwilldominate', 'itmejp', 'maximilian_dood', 'fairlight_excalibur', 'riotgamesoceania', 'p4wnyhof', 'broscious', 'c9sneaky']
 viewer_threshold = 1000
 
@@ -60,16 +60,16 @@ def setup_bot():
 def setup_jokes():
     return pd.read_csv(joke_file)
 
-def store_entries(corpus):
+def store_entries(corpus, channel):
     if(len(corpus) >= corpus_cap):
-        with open(corpus_file, 'a') as f:
+        with open(corpus_path + channel + '.txt', 'a') as f:
             f.write('\n'.join(corpus))
 
 def main():
     bot = setup_bot()
     jokes = setup_jokes()
     chain = {}
-    corpus = []
+    corpuses = {}
     last_time = time.time()
     while True:
         if time.localtime().tm_hour == 0:
@@ -93,12 +93,17 @@ def main():
                     spam = mchain.random_walk_statement(chain)
                     bot.send(spam, channel)
         else:
+            if channel in corpuses:
+                corpus = corpuses[channel]
+            else:
+                corpus = []
+                corpuses[channel] = corpus
             corpus.append(text[:len(text)-2])
             if len(corpus) >= corpus_cap:
                 chain = mchain.update_markov_chain(corpus, chain, weight=.65)
                 if(storing_corpus):
-                    store_entries(corpus)
-                corpus = []
+                    store_entries(corpus, channel)
+                corpuses[channel] = []
 
 if __name__ == '__main__':
     main()
