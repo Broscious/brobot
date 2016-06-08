@@ -8,7 +8,6 @@ from selenium import webdriver
 import irc_bot
 import markov_chain_handler as mchain
 
-
 path_to_chromedriver = '/home/broscious/chromedriver/chromedriver'
 storing_corpus = True
 joke_file = 'jokes.csv'
@@ -16,6 +15,9 @@ corpus_cap = 200
 corpus_path = 'corpuses/'
 active_channels = set(['broscious', 'sforseanx'])
 viewer_threshold = 1000
+meme_dict = {
+'here come dat boi': 'o shit waddup'
+}
 
 def get_top_channels():
     browser = webdriver.Chrome(executable_path = path_to_chromedriver)
@@ -67,9 +69,64 @@ def setup_jokes():
     return pd.read_csv(joke_file)
 
 def store_entries(corpus, channel):
+    print('storing ' + channel)
     if(len(corpus) >= corpus_cap):
         with open(corpus_path + channel + '.txt', 'a') as f:
             f.write('\n'.join(corpus) + '\n')
+
+def get_chain(chains, channel):
+    if channel in chains:
+        chain = chains[channel]
+    else:
+        chain = {}
+        chains[channel] = chain
+    return chain
+
+def tell_joke(bot, jokes, channel):
+    sample = jokes.sample().iloc[0]
+    bot.send(sample['Joke'], channel)
+    bot.sendall(sample['Punchline'], channel)
+
+def spam(bot, chain, channel):
+    if len(chain) > 0:
+        spam = mchain.random_walk_statement(chain)
+        bot.send(spam, channel)
+
+def get_corpus(corpuses, channel):
+    if channel in corpuses:
+        corpus = corpuses[channel]
+    else:
+        corpus = []
+        corpuses[channel] = corpus
+    return corpus
+
+def update_state(text, channel, chain, corpuses, chains):
+    if(channel is None):
+        return
+    corpus = get_corpus(corpuses, channel)
+    corpus.append(text[:len(text)-2])
+    if len(corpus) >= corpus_cap:
+        chains[channel] = mchain.update_markov_chain(corpus, chain, weight=.65)
+        if(storing_corpus):
+            store_entries(corpus, channel)
+            corpuses[channel] = []
+
+def about_bot(bot, channel):
+    message = "I'm a bot made by [twitch.tv/]Broscious to provide fun NLP related interactions. Try !commands for a list of commands"
+    bot.send(message, channel)
+
+def about(bot, channel):
+    message = "My creater is [twitch.tv/]Broscious and he loves, cheerwine, video games, word embeddings, and dank memes. Try !aboutbot for info about me"
+    bot.send(message, channel)
+
+def commands(bot, channel):
+    message = "!joke, !spam, !aboutbot, !about, !commands"
+    bot.send(message, channel)
+
+def auto_response(text, bot, channel):
+    for start in meme_dict:
+        if text.lower().find(start) >= 0:
+            bot.send(meme_dict[start], channel)
 
 def run_bot():
     bot = setup_bot()
@@ -84,39 +141,27 @@ def run_bot():
             last_time = time.time()
             refresh_channels(bot)
         msg = bot.read()
-        print(msg)
+        #print(msg)
         user, channel, text = msg
-        if channel in chains:
-            chain = chains[channel]
-        else:
-            chain = {}
-            chains[channel] = chain
 
-        if(len(text) < 1):
-            print(msg)
+        chain = get_chain(chains, channel)
+        if(text is None):
             continue
-        if(text[0] == '!'):
+        elif(len(text) < 1):
+            continue
+        elif(text[0] == '!'):
             if channel in active_channels:
                 if text == '!joke\r\n':
-                    sample = jokes.sample().iloc[0]
-                    bot.send(sample['Joke'], channel)
-                    bot.sendall(sample['Punchline'], channel)
+                    tell_joke(bot, jokes, channel)
                 if text == '!spam\r\n':
-                    if len(chain) > 0:
-                        spam = mchain.random_walk_statement(chain)
-                        bot.send(spam, channel)
+                    spam(bot, chain, channel)
+                if text == '!aboutbot\r\n':
+                    about_bot(bot, channel)
+                if text == '!commands\r\n':
+                    commands(bot, channel)
         else:
-            if channel in corpuses:
-                corpus = corpuses[channel]
-            else:
-                corpus = []
-                corpuses[channel] = corpus
-            corpus.append(text[:len(text)-2])
-            if len(corpus) >= corpus_cap:
-                chains[channel] = mchain.update_markov_chain(corpus, chain, weight=.65)
-                if(storing_corpus):
-                    store_entries(corpus, channel)
-                corpuses[channel] = []
+            auto_response(text, bot, channel)
+            update_state(text, channel, chain, corpuses, chains)
 
 def main():
     run_bot()

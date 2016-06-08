@@ -21,8 +21,8 @@ def get_all_sub_emotes():
     return emotes
 
 def main():
-    print(get_global_emotes())
-    #print(get_all_sub_emotes())
+    #print(get_global_emotes())
+    print(get_all_sub_emotes())
 
 if __name__ == '__main__':
     main()

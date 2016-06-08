@@ -1,6 +1,6 @@
 import os
 
-import gensim
+from gensim.models import Word2Vec, Phrases
 
 import twitch_emote_finder as tef
 
@@ -11,21 +11,23 @@ class Corpus(object):
     def __iter__(self):
         emotes = tef.get_global_emotes()
         for fname in os.listdir(self.directory):
-            for line in open(os.path.join(self.dirname, fname)):
+            for line in open(os.path.join(self.directory, fname)):
                 yield line.split()
-                #words = line.split(' ')
-                #for i, word in enumerate(words):
-                #    if word not in emotes:
-                #        words[i] = word.lower
-                #yield words
 
 def train():
     sentences = Corpus('/home/broscious/workspace/brobot/corpuses')
-    model = gensim.models.Word2Vec(sentences, min_count=40, size=200, workers=4)
+    model = Word2Vec(sentences, min_count=10, size=100, workers=4)
+    return model
+
+def phrase_train():
+    sentences = Corpus('/home/broscious/workspace/brobot/corpuses')
+    transformer = Phrases(sentences)
+    model = Word2Vec(transformer[sentences], size=100, workers=4)
     return model
 
 def main():
-    model = train()
+    model = phrase_train()
+    print(model.most_similar('LUL'))
 
 if __name__ == '__main__':
     main()
