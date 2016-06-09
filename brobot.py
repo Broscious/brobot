@@ -10,7 +10,7 @@ import markov_chain_handler as mchain
 
 path_to_chromedriver = '/home/broscious/chromedriver/chromedriver'
 storing_corpus = True
-joke_file = 'jokes.csv'
+joke_file = '/home/broscious/workspace/brobot/jokes.csv'
 corpus_cap = 200
 corpus_path = 'corpuses/'
 active_channels = set(['broscious', 'sforseanx'])
@@ -19,6 +19,8 @@ meme_dict = {
 'here come dat boi': 'o shit waddup'
 }
 
+#only pick the first loaded channels
+#need to add scrolling to the ember element to get more but too lazy
 def get_top_channels():
     browser = webdriver.Chrome(executable_path = path_to_chromedriver)
     url = 'https://www.twitch.tv/directory/all'
@@ -50,7 +52,7 @@ def refresh_channels(bot):
 
 def join_twitch_channel(bot, channel):
     bot.join_channel(channel)
-    return bot.read(), bot.read()
+    return bot.read(), bot.read() #skip some useless responses
 
 def setup_bot():
     bot_name = 'broscbot'
@@ -61,7 +63,7 @@ def setup_bot():
     bot = irc_bot.irc_bot(bot_name, oauth)
     bot.read() #skip the first line
     #channels = get_top_channels()
-    for channel in active_channels | get_top_channels():
+    for channel in active_channels | get_top_channels(): #set union for active/top channels
         join_twitch_channel(bot, channel)
     return bot
 
@@ -93,6 +95,7 @@ def spam(bot, chain, channel):
         bot.send(spam, channel)
 
 def get_corpus(corpuses, channel):
+    '''Gets the corpus or creates a new empty list and returns it'''
     if channel in corpuses:
         corpus = corpuses[channel]
     else:
@@ -141,27 +144,34 @@ def run_bot():
             last_time = time.time()
             refresh_channels(bot)
         msg = bot.read()
-        #print(msg)
         user, channel, text = msg
-
         chain = get_chain(chains, channel)
-        if(text is None):
+        #just some checks to avoid the bot from crashing
+        #tbh they're not extensive or that helpful, should probs be changed
+        if(channel is None):
             continue
         elif(len(text) < 1):
             continue
         elif(text[0] == '!'):
             if channel in active_channels:
+                #Maybe useful to use dictionaries with closures to chose
+                #functions in the future but this works for so few functions
+                #also much easier to read/understand.
                 if text == '!joke\r\n':
                     tell_joke(bot, jokes, channel)
-                if text == '!spam\r\n':
+                elif text == '!spam\r\n':
                     spam(bot, chain, channel)
-                if text == '!aboutbot\r\n':
+                elif text == '!aboutbot\r\n':
                     about_bot(bot, channel)
-                if text == '!commands\r\n':
+                elif text == '!commands\r\n':
                     commands(bot, channel)
+                elif text == '!about\r\n':
+                    about(bot, channel)
         else:
             auto_response(text, bot, channel)
             update_state(text, channel, chain, corpuses, chains)
+
+        print(msg)
 
 def main():
     run_bot()
