@@ -43,11 +43,11 @@ def get_top_channels():
 
 def refresh_channels(bot):
     top_channels = get_top_channels()
-    #Leave channels bot is in that are not in the top_channels sans active ones
-    for channel in bot.channels - (top_channels - active_channels):
+    #Leave channels the bot is in that are not in the top_channels sans active ones
+    for channel in bot.channels - top_channels - active_channels:
         bot.part_channel(channel)
-    #Join channels bot is not in that are in the top_channels sans active
-    for channel in (top_channels - active_channels) - bot.channels:
+    #Join channels the bot is not in that are in the top_channels
+    for channel in top_channels - bot.channels:
         bot.join_channel(channel)
 
 def join_twitch_channel(bot, channel):
@@ -127,9 +127,10 @@ def commands(bot, channel):
     bot.send(message, channel)
 
 def auto_response(text, bot, channel):
-    for start in meme_dict:
-        if text.lower().find(start) >= 0:
-            bot.send(meme_dict[start], channel)
+    if channel in active_channels:
+        for start in meme_dict:
+            if text.lower().find(start) >= 0:
+                bot.send(meme_dict[start], channel)
 
 def run_bot():
     bot = setup_bot()
