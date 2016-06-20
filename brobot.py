@@ -83,7 +83,7 @@ def setup_bot():
         oauth = f.read()
 
     bot = irc_bot.irc_bot(bot_name, oauth)
-    bot.read() #skip the first line
+    bot.read(7) #skip the first 7 lines
     #channels = get_top_channels()
     for channel in active_channels | get_top_channels(): #set union for active/top channels
         join_twitch_channel(bot, channel)
@@ -137,11 +137,11 @@ def update_state(text, channel, chain, corpuses, chains):
             corpuses[channel] = []
 
 def about_bot(bot, channel):
-    message = "I'm a bot made by [twitch.tv/]Broscious to provide fun NLP related interactions. Try !commands for a list of commands"
+    message = "I'm a bot made by twitch.tv/Broscious to provide fun NLP related interactions. Try !commands for a list of commands"
     bot.send(message, channel)
 
 def about(bot, channel):
-    message = "My creater is [twitch.tv/]Broscious and he loves, cheerwine, video games, word embeddings, and dank memes. Try !aboutbot for info about me"
+    message = "My creater is twitch.tv/Broscious and he loves, cheerwine, video games, word embeddings, and dank memes. Try !aboutbot for info about me"
     bot.send(message, channel)
 
 def commands(bot, channel):
@@ -194,7 +194,7 @@ def run_bot():
                     commands(bot, channel)
                 elif text == '!about\r\n':
                     about(bot, channel)
-                elif text == '!8ball\r\n':
+                elif text.startswith('!8ball'):
                     eight_ball(bot, channel)
         else:
             auto_response(text, bot, channel)

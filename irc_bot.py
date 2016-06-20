@@ -10,6 +10,7 @@ class irc_bot(object):
         self.irc.send('PASS ' + oauth + '\r\n')
         self.irc.send('NICK ' + nick + '\r\n')
         self.channels = set([])
+        self.old = ''
 
     def join_channel(self, channel):
         self.channels.add(channel)
@@ -49,8 +50,17 @@ class irc_bot(object):
             return True
         return False
 
-    def read(self):
-        text = self.recv()
+    def _read_line(self):
+        if self.old.find('\r\n') > -1:
+            recieved = self.old
+        else:
+            recieved = self.recv()
+        splits = recieved.split('\r\n', 1)
+        text = splits[0]
+        if len(splits) > 1:
+            self.old = splits[1]
+        else:
+            self.old = ''
         if(text.find('PRIVMSG') != -1):
            user = ''
            for x in xrange(1, len(text)):
@@ -63,6 +73,12 @@ class irc_bot(object):
            message = splits[3][1:]
            return (user, channel, message)
         else: return (None, None, text)
+
+    def read(self, num=0):
+        if num is 0:
+            return self._read_line()
+        else:
+            return tuple([self._read_line() for x in xrange(num)])
 
 def base_bot_test():
     bot_name = 'broscbot'
