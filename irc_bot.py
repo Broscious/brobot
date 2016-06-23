@@ -11,6 +11,7 @@ class irc_bot(object):
         self.irc.send('NICK ' + nick + '\r\n')
         self.channels = set([])
         self.old = ''
+        self.held_messages = []
 
     def join_channel(self, channel):
         self.channels.add(channel)
@@ -20,7 +21,14 @@ class irc_bot(object):
         self.channels.remove(channel)
         self.irc.send('PART #' + channel + '\r\n')
 
-    def send(self, message, channel):
+    def _build_messages(self):
+        combined = ''
+        for channel, message in self.held_messages:
+            combined += 'PRIVMSG #' + channel + ' :' + message + '\r\n'
+        self.held_messages = []
+        return combined
+
+    def send(self, message, channel, wait=False):
         if channel in self.channels:
             self.irc.send('PRIVMSG #' + channel + ' :' + message + '\r\n')
         else:
@@ -69,9 +77,13 @@ class irc_bot(object):
                    break
                user += current_char
            splits = text.split(' ', 3)
-           channel = splits[2][1:]
-           message = splits[3][1:]
-           return (user, channel, message)
+           try:
+               channel = splits[2][1:]
+               message = splits[3][1:]
+               return (user, channel, message)
+           except:
+               return (None, None, text)
+
         else: return (None, None, text)
 
     def read(self, num=0):
