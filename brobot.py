@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import time
 import random
 import urllib2
@@ -12,6 +14,7 @@ import markov_chain_handler as mchain
 path_to_chromedriver = '/home/broscious/chromedriver/chromedriver'
 storing_corpus = True
 joke_file = '/home/broscious/workspace/brobot/jokes.csv'
+pickup_file = '/home/broscious/workspace/brobot/pickup_lines.txt'
 corpus_cap = 200
 corpus_path = 'corpuses/'
 active_channels = set(['broscious', 'sforseanx'])
@@ -41,8 +44,15 @@ eight_ball_sayings = [
 'Outlook not so good',
 'Very doubtful']
 
+simple_commands = {
+'!goodshit' : u'👌👀👌👀👌👀👌👀👌👀 good shit go౦ԁ sHit👌 thats ✔ some good👌👌shit right👌👌there👌👌👌 right✔there ✔✔if i do ƽaү so my self 💯 i say so 💯 thats what im talking about right there right there (chorus: ʳᶦᵍʰᵗ ᵗʰᵉʳᵉ) mMMMMᎷМ💯 👌👌 👌НO0ОଠOOOOOОଠଠOoooᵒᵒᵒᵒᵒᵒᵒᵒᵒ👌 👌👌 👌 💯 👌 👀 👀 👀 👌👌Good shit'.encode('utf-8'),
+'!bot' : "I'm a bot made by twitch.tv/Broscious to provide goofy commands. Try !commands for a list of commands",
+'!about' : "My creater is twitch.tv/Broscious and he loves, cheerwine, video games, word embeddings, and dank memes. Try !bot for info about me",
+'!commands' : "!joke, !spam, !pickup, !8ball, !bot, !about, !commands"
+}
+
 #only pick the first loaded channels
-#need to add scrolling to the ember element to get more but too lazy
+#need to add scrolling to the ember element to get more but not super useful
 def get_top_channels():
     browser = webdriver.Chrome(executable_path = path_to_chromedriver)
     url = 'https://www.twitch.tv/directory/all'
@@ -92,6 +102,12 @@ def setup_bot():
 def setup_jokes():
     return pd.read_csv(joke_file)
 
+def setup_pickups():
+    with open(pickup_file, 'r') as f:
+        text = f.read()
+        pickup_lines = text.split('\n')
+    return pickup_lines
+
 def store_entries(corpus, channel):
     print('storing ' + channel)
     if(len(corpus) >= corpus_cap):
@@ -108,8 +124,11 @@ def get_chain(chains, channel):
 
 def tell_joke(bot, jokes, channel):
     sample = jokes.sample().iloc[0]
-    bot.send(sample['Joke'], channel)
-    bot.sendall(sample['Punchline'], channel)
+    bot.send(sample['Joke'], channel, wait=True)
+    bot.send(sample['Punchline'], channel)
+
+def tell_pickup(bot, pickup_lines, channel):
+    bot.send(random.choice(pickup_lines), channel)
 
 def spam(bot, chain, channel):
     if len(chain) > 0:
@@ -136,17 +155,12 @@ def update_state(text, channel, chain, corpuses, chains):
             store_entries(corpus, channel)
             corpuses[channel] = []
 
-def about_bot(bot, channel):
-    message = "I'm a bot made by twitch.tv/Broscious to provide fun NLP related interactions. Try !commands for a list of commands"
-    bot.send(message, channel)
-
-def about(bot, channel):
-    message = "My creater is twitch.tv/Broscious and he loves, cheerwine, video games, word embeddings, and dank memes. Try !aboutbot for info about me"
-    bot.send(message, channel)
-
-def commands(bot, channel):
-    message = "!joke, !spam, !aboutbot, !about, !commands"
-    bot.send(message, channel)
+def send_simple_responses(bot, message, channel):
+    for command, response in simple_commands.iteritems():
+        if message.startswith(command):
+            bot.send(response, channel)
+            return True
+    return False
 
 def eight_ball(bot, channel):
     message = random.choice(eight_ball_sayings)
@@ -161,6 +175,7 @@ def auto_response(text, bot, channel):
 def run_bot():
     bot = setup_bot()
     jokes = setup_jokes()
+    pickup_lines = setup_pickups()
     chains = {}
     corpuses = {}
     last_time = time.time()
@@ -181,21 +196,18 @@ def run_bot():
             continue
         elif(text[0] == '!'):
             if channel in active_channels:
-                #Maybe useful to use dictionaries with closures to chose
-                #functions in the future but this works for so few functions
-                #also much easier to read/understand.
-                if text == '!joke\r\n':
+                #Maybe useful to use dictionaries and reduce the number of func
+                #to a small number
+                if send_simple_responses(bot, text, channel):
+                    pass
+                elif text.startswith('!joke'):
                     tell_joke(bot, jokes, channel)
-                elif text == '!spam\r\n':
+                elif text.startswith('!spam'):
                     spam(bot, chain, channel)
-                elif text == '!aboutbot\r\n':
-                    about_bot(bot, channel)
-                elif text == '!commands\r\n':
-                    commands(bot, channel)
-                elif text == '!about\r\n':
-                    about(bot, channel)
                 elif text.startswith('!8ball'):
                     eight_ball(bot, channel)
+                elif text.startswith('!pickup'):
+                    tell_pickup(bot, pickup_lines, channel)
         else:
             auto_response(text, bot, channel)
             update_state(text, channel, chain, corpuses, chains)
