@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 import twitch_emote_finder as tef
 
-emotes = tef.get_global_emotes()
+#emotes = tef.get_global_emotes()
 
 class Corpus(object):
     def __init__(self, directory, min_len=0):
@@ -16,7 +16,7 @@ class Corpus(object):
         self.min_len = min_len
 
     def __iter__(self):
-        emotes = tef.get_global_emotes()
+        #emotes = tef.get_global_emotes()
         for fname in os.listdir(self.directory):
             for line in open(os.path.join(self.directory, fname)):
                 splits = line.split()
@@ -83,15 +83,50 @@ def plot_emotes(model, emote):
     plt.savefig('figs/' + emote + '.png')
     plt.close()
 
+def freq_plot():
+    corpus = Corpus('/home/broscious/workspace/brobot/corpuses', 0)
+    frequencies = {}
+    for line in corpus:
+        for word in line:
+            if word in frequencies:
+                frequencies[word] += 1
+            else:
+                frequencies[word] = 1
+
+    words = [(word, freq) for word, freq in frequencies.iteritems()]
+    words = sorted(words, key=lambda pair: pair[1], reverse=True)
+
+    top_words, top_freq  = zip(*words[:5])
+
+    ind = np.arange(len(top_words))
+    width = .35
+
+    fig, ax = plt.subplots()
+    rects = ax.bar(ind + .3, top_freq, width, color='m')
+
+    ax.set_ylabel('Frequency')
+    ax.set_title('Most Frequent twitch words')
+    ax.set_xticks(ind + width/2 + .3)
+    ax.set_xticklabels(top_words)
+    ax.tick_params(axis='x', which='both', width=0)
+    #ax.set_ylim([0, 1])
+    ax.yaxis.grid()
+
+    plt.show()
+    #plt.close()
+
+
 def main():
     #model = train()
     #model.save('asciiembedding')
-    model = Word2Vec.load('asciiembedding')
+    #model = Word2Vec.load('asciiembedding')
     #comp_twitch_emotes(model)
     #print(model.most_similar(sys.argv[1]))
     #most_similar_emotes(model)
-    for emote in emotes:
-        plot_emotes(model, emote)
+    #for emote in emotes:
+    #    plot_emotes(model, emote)
+    freq_plot()
+
 
 
 if __name__ == '__main__':
