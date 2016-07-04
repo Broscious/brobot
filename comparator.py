@@ -1,14 +1,14 @@
 import os
 import sys
+import random
+from fractions import Fraction
 
 from gensim.models import Word2Vec, Phrases
-
+from scipy.optimize import leastsq
 import numpy as np
 import matplotlib.pyplot as plt
 
 import twitch_emote_finder as tef
-
-#emotes = tef.get_global_emotes()
 
 class Corpus(object):
     def __init__(self, directory, min_len=0):
@@ -58,9 +58,13 @@ def single_emote_comp(model, emote):
 
 def most_similar_emotes(model):
     emotes = tef.get_global_emotes()
+    sims = {}
     for emote in emotes:
-        print(emote)
-        print(model.most_similar(emote))
+        if emote in sims:
+            sims[emote] += model.most_similar(emote)
+        else:
+            sims[emote] = [model.most_similar(emote)]
+    return sims
 
 def plot_emotes(model, emote):
     scores = single_emote_comp(model, emote)
@@ -83,6 +87,21 @@ def plot_emotes(model, emote):
     plt.savefig('figs/' + emote + '.png')
     plt.close()
 
+def _harmonic(a, b, s):
+    if b-a == 1:
+        return 1/(a**s)
+    m = (a+b)//2
+    return _harmonic(a,m, s) + _harmonic(m,b, s)
+
+def harmonic(n, s):
+    return _harmonic(1,n+1, s)
+
+def zipf_residuals(p, y, x, n):
+    err = y - 1/((x**p)*harmonic(n, p))
+    return err
+def zipf(N, k, s):
+    return 1/((k**s) * harmonic(N, s))
+
 def freq_plot():
     corpus = Corpus('/home/broscious/workspace/brobot/corpuses', 0)
     frequencies = {}
@@ -96,24 +115,48 @@ def freq_plot():
     words = [(word, freq) for word, freq in frequencies.iteritems()]
     words = sorted(words, key=lambda pair: pair[1], reverse=True)
 
-    top_words, top_freq  = zip(*words[:5])
+    top_words, top_freqs  = zip(*words[:10])
 
     ind = np.arange(len(top_words))
     width = .35
 
     fig, ax = plt.subplots()
-    rects = ax.bar(ind + .3, top_freq, width, color='m')
+    rects1 = ax.bar(ind, top_freqs, width, color='m')
+    #rects2 = ax.bar(ind + width, pred_zipf, width, color='r')
 
     ax.set_ylabel('Frequency')
     ax.set_title('Most Frequent twitch words')
-    ax.set_xticks(ind + width/2 + .3)
+    ax.set_xticks(ind + width)
     ax.set_xticklabels(top_words)
     ax.tick_params(axis='x', which='both', width=0)
-    #ax.set_ylim([0, 1])
     ax.yaxis.grid()
+    #ax.legend((rects1[0], rects2[0]), ('Twitch', "Zipf's"))
 
+    plt.savefig('figs/frequency.png')
+    plt.close()
+
+def rand_index(words):
+    r = random.randrange(len(words))
+    return words[r][1], r
+
+def zipf_plot():
+    corpus = Corpus('/home/broscious/workspace/brobot/corpuses', 0)
+    frequencies = {}
+    for line in corpus:
+        for word in line:
+            if word in frequencies:
+                frequencies[word] += 1
+            else:
+                frequencies[word] = 1
+
+    words = [(word, freq) for word, freq in frequencies.iteritems()]
+    words = sorted(words, key=lambda pair: pair[1], reverse=True)
+    word, freq = zip(*words)
+    freq = np.array(freq)
+    #plt.loglog(freq_sample, rank_sample, 'ro')
+    plt.loglog(freq, np.arange(len(freq)), 'ro')
+    plt.grid(True)
     plt.show()
-    #plt.close()
 
 
 def main():
@@ -123,9 +166,11 @@ def main():
     #comp_twitch_emotes(model)
     #print(model.most_similar(sys.argv[1]))
     #most_similar_emotes(model)
+    #emotes = tef.get_global_emotes()
     #for emote in emotes:
     #    plot_emotes(model, emote)
-    freq_plot()
+    #freq_plot()
+    zipf_plot()
 
 
 
