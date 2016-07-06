@@ -7,8 +7,11 @@ from gensim.models import Word2Vec, Phrases
 from scipy.optimize import leastsq
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn import manifold
 
 import twitch_emote_finder as tef
+
+emotes = tef.get_global_emotes()
 
 class Corpus(object):
     def __init__(self, directory, min_len=0):
@@ -158,11 +161,18 @@ def zipf_plot():
     plt.grid(True)
     plt.show()
 
+def tsne_plot(model):
+    vecs = [model[emote] for emote in emotes]
+    tsne = manifold.TSNE(n_components=2, init='pca')
+    e_tsne = tsne.fit_transform(vecs)
+    x, y = zip(*e_tsne)
+    plt.plot(x, y, marker='o', color='m', ls='')
+    plt.show()
 
 def main():
     #model = train()
     #model.save('asciiembedding')
-    #model = Word2Vec.load('asciiembedding')
+    model = Word2Vec.load('asciiembedding')
     #comp_twitch_emotes(model)
     #print(model.most_similar(sys.argv[1]))
     #most_similar_emotes(model)
@@ -170,7 +180,8 @@ def main():
     #for emote in emotes:
     #    plot_emotes(model, emote)
     #freq_plot()
-    zipf_plot()
+    #zipf_plot()
+    tsne_plot(model)
 
 
 
