@@ -7,11 +7,13 @@ from gensim.models import Word2Vec, Phrases
 from scipy.optimize import leastsq
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from sklearn import manifold
 
 import twitch_emote_finder as tef
 
 emotes = tef.get_global_emotes()
+image_folder = 'emotes/'
 
 class Corpus(object):
     def __init__(self, directory, min_len=0):
@@ -166,8 +168,19 @@ def tsne_plot(model):
     tsne = manifold.TSNE(n_components=2, init='pca')
     e_tsne = tsne.fit_transform(vecs)
     x, y = zip(*e_tsne)
-    plt.plot(x, y, marker='o', color='m', ls='')
-    plt.show()
+    artists = []
+    e = list(emotes)
+    fig, ax = plt.subplots()
+    for ind in xrange(len(e)):
+        path = os.path.join(image_folder, e[ind]+'.png')
+        image = OffsetImage(plt.imread(path), zoom=2)
+        ab = AnnotationBbox(image, (x[ind], y[ind]), xycoords='data', frameon=False)
+        artists.append(ax.add_artist(ab))
+    ax.update_datalim(np.column_stack([x,y]))
+    ax.autoscale()
+    #plt.plot(x, y, marker='o', color='m', linestyle='')
+    #plt.show()
+    plt.savefig('figs/tsne.png', dpi=200)
 
 def main():
     #model = train()
