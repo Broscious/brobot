@@ -2,6 +2,7 @@ import os
 import sys
 import random
 from fractions import Fraction
+import math
 
 from gensim.models import Word2Vec, Phrases
 from scipy.optimize import leastsq
@@ -9,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from sklearn import manifold
+from wordcloud import WordCloud
 
 import twitch_emote_finder as tef
 
@@ -25,8 +27,61 @@ class Corpus(object):
         for fname in os.listdir(self.directory):
             for line in open(os.path.join(self.directory, fname)):
                 splits = line.split()
-                if len(splits) > self.min_len and is_ascii(line):
+                if len(splits) >= self.min_len and is_ascii(line):
                     yield splits
+
+    def build_idf(self):
+        df_dict = {}
+        corpus_num = 0.0
+        for fname in os.listdir(self.directory):
+            corpus_num += 1
+            with open(os.path.join(self.directory, fname), 'r') as f:
+                doc = set(f.read().split())
+                for word in doc:
+                    if is_ascii(word):
+                        if word in df_dict:
+                            df_dict[word] += 1
+                        else:
+                            df_dict[word] = 1
+        idf_dict = {}
+        for word, df in df_dict.iteritems():
+            idf_dict[word] = math.log(corpus_num/df_dict[word])
+
+
+        self.idf_dict = idf_dict
+
+    def tf_idf(self, document):
+        frequencies = {}
+        seen = set()
+        with open(os.path.join(self.directory, document), 'r') as f:
+            for word in f.read().split():
+                if is_ascii(word):
+                    seen.add(word)
+                    if word in frequencies:
+                        frequencies[word] += 1
+                    else:
+                        frequencies[word] = 1
+
+        tf_idf = []
+        word_count = len(seen)
+        for word, freq in frequencies.iteritems():
+            tf_idf.append((word, freq*self.idf_dict[word]/word_count))
+
+        return sorted(tf_idf, key=lambda pair: pair[1], reverse=True)
+
+
+
+def get_frequencies(corpus):
+    frequencies = {}
+    for line in corpus:
+        for word in line:
+            if word in frequencies:
+                frequencies[word] += 1
+            else:
+                frequencies[word] = 1
+    words = [(word, freq) for word, freq in frequencies.iteritems()]
+    return sorted(words, key=lambda pair: pair[1], reverse=True)
+
 
 def is_ascii(s):
     return all(ord(c) < 128 for c in s)
@@ -104,21 +159,14 @@ def harmonic(n, s):
 def zipf_residuals(p, y, x, n):
     err = y - 1/((x**p)*harmonic(n, p))
     return err
+
 def zipf(N, k, s):
     return 1/((k**s) * harmonic(N, s))
 
 def freq_plot():
     corpus = Corpus('/home/broscious/workspace/brobot/corpuses', 0)
-    frequencies = {}
-    for line in corpus:
-        for word in line:
-            if word in frequencies:
-                frequencies[word] += 1
-            else:
-                frequencies[word] = 1
 
-    words = [(word, freq) for word, freq in frequencies.iteritems()]
-    words = sorted(words, key=lambda pair: pair[1], reverse=True)
+    words = get_frequencies(corpus)
 
     top_words, top_freqs  = zip(*words[:10])
 
@@ -146,16 +194,8 @@ def rand_index(words):
 
 def zipf_plot():
     corpus = Corpus('/home/broscious/workspace/brobot/corpuses', 0)
-    frequencies = {}
-    for line in corpus:
-        for word in line:
-            if word in frequencies:
-                frequencies[word] += 1
-            else:
-                frequencies[word] = 1
+    words = get_frequencies(corpus)
 
-    words = [(word, freq) for word, freq in frequencies.iteritems()]
-    words = sorted(words, key=lambda pair: pair[1], reverse=True)
     word, freq = zip(*words)
     freq = np.array(freq)
     #plt.loglog(freq_sample, rank_sample, 'ro')
@@ -182,10 +222,25 @@ def tsne_plot(model):
     #plt.show()
     plt.savefig('figs/tsne.png', dpi=200)
 
+def build_word_clouds():
+    directory = '/home/broscious/workspace/brobot/corpuses'
+    corpus = Corpus(directory, 0)
+    corpus.build_idf()
+    for fname in os.listdir(directory):
+        word_freq = corpus.tf_idf(fname)[:5000]
+        wordcloud = WordCloud(width=800, height=400, relative_scaling=.5).fit_words(word_freq)
+        plt.figure()
+        plt.imshow(wordcloud)
+        plt.axis("off")
+        image_name = fname.replace('.txt', '.png')
+        plt.savefig(os.path.join('figs', image_name), dpi=200)
+        plt.close()
+        print(fname + ' done')
+
 def main():
     #model = train()
     #model.save('asciiembedding')
-    model = Word2Vec.load('asciiembedding')
+    #model = Word2Vec.load('asciiembedding')
     #comp_twitch_emotes(model)
     #print(model.most_similar(sys.argv[1]))
     #most_similar_emotes(model)
@@ -194,7 +249,8 @@ def main():
     #    plot_emotes(model, emote)
     #freq_plot()
     #zipf_plot()
-    tsne_plot(model)
+    #tsne_plot(model)
+    build_word_clouds()
 
 
 
